@@ -1,0 +1,458 @@
+mysql -u 用户名 -p 
+密码
+
+mysql -u root -p
+******
+
+
+*************************************************************************************************************************
+显示数据库
+show database;
+
+选择数据库
+use test;
+
+查看选择的数据库
+select database();
+
+删除数据库
+drop database test;
+
+创建数据库s
+create database test;
+
+创建数据库的专有用户【grant/revoke】
+grant all privileges on test.* to user@localhost identified by '123456';
+创建专门操作test数据库的用户user，并设置密码，赋予全部权限
+
+show grants;
+revoke all on *.* from user@localhost
+
+*************************************************************************************************************************
+查看表
+show tables;
+
+显示表结构[describe]
+desc user;
+
+删除表【drop table if exists 表名】
+drop table customer;
+
+请空表数据
+truncate table goods;
+delete from goods where 1=1;
+
+复制表
+1.表的列结构+数据的复制
+create table 新表名 select * from 旧表名【where，limit】
+
+create table tmp select * from Tb;
+
+
+2.复制表的列结构【auto_increment primary key等列构造将被复制】
+create table 新表名 like 旧表名
+
+create table tmp like tm;
+
+3.数据的复制
+向一个表中复制另一个表中的全部数据
+insert into 表名 select * from 含有数据的表
+
+insert into customerG select * from customer
+
+insert into tb1G(no) select bang from tb1;
+
+
+4.通过一张表数据更新另一张表
+update tmp join tb on tmp.id=tb.id
+set tmp.sex=tb.sex
+where tmp.id>0;
+
+*************************************************************************************************************************
+【
+auto_increment
+default '0'
+index
+not null
+primary key
+unique
+check
+】
+
+*************************************************************************************************************************
+
+创建表:
+create table customer
+(
+	mid char(5) primary key,
+	name varchar(20),
+	birth datetime,
+	sex char(1) default '0'
+)
+charset=utf8;
+
+
+
+alter table customer charset=utf8;
+----------------------------------------表的维护和改造---------------------------------------
+alter table
+修改列的定义:alter table... modify
+追加列:alter table...add
+修改列的名称与定义:alter table ... change
+删除列:alter table...drop
+
+1.改变列的数据类型:
+alter table 表名 modify 列名 数据类型
+
+alter table visitor modify name varchar(30)
+
+
+2.追加新列
+alter table 表名 add 列名 数据类型
+
+alter table visitor add old int
+
+	1）alter table visitor add old int first【将old列添加到所有列的最前面】
+
+	2）alter table visitor add old int after name【将old列添加到name列后】
+
+
+3.改变列的位置
+alter table visitor modify old int after name【将old移到name后】
+
+
+4.改变列名和类型
+alter table 表名 change 修改前的列名 修改后的列名 修改后的类型
+
+ALTER TABLE visitor CHANGE birth birthday DATE
+
+
+5.删除列
+alter table 表名 drop 列名
+
+alter table visitor drop old;
+
+
+
+
+
+*************************************************************************************************************************
+数据插入及显示
+insert into 表名（列名1，列名2，...）values(数据1，数据2，...);
+insert into 表名 values（数据1，数据2，...）;
+
+
+select * from 表名;
+select 列名1，列名2，... from 表名;
+
+
+
+更新数据
+update 表名 set 列名1=值1，列名2=值2，... where 条件表达式
+
+
+order by id asc,name desc【排序】
+limit 0,2===>limit 2【从第0个位置开始，取出2条记录】
+
+
+
+
+*************************************************************************************************************************
+
+
+select length('中文');
+select bit_length('中文');
+select char_length('中文');
+
+select round(1234.5678);//1235
+select round(1234.5678,2);//1234.57
+select round(1234.5678,-2);//1200整数部分四舍五入
+
+
+----------------------------------------
+
+CASE	表达式
+	WHEN	比较值1	THEN	结果1
+	WHEN	比较值2	THEN	结果2
+	...
+	[ELSE 结果值N]
+END
+
+-----------------------------------------
+
+CASE	
+	WHEN	条件表达式1	THEN	结果1
+	WHEN	条件表达式2	THEN	结果2
+	...
+	[ELSE 结果值N]
+END
+*************************************************************************************************************************
+
+内连接·外链接·自然连接【inner join on】【left outer join on】
+
+exists:是对子查询中抽出的记录是否存在检查的运算符
+select name,address from user
+where exists
+	(select * from order where user.id=order.uid);
+相关子查询，将对user的每条记录进行子查询操作
+
+
+
+*************************************************************************************************************************
+事务处理及锁定
+
+*****************************************************************
+存储引擎
+	设置存储引擎
+		【my.ini】InnoDB
+		确认表中使用的引擎：
+			show create table 表名;（【】\G】替换【;】显示清楚明了）
+		
+	存储引擎的变更
+		修改表使用的引擎：
+			alter table 表名 ENGINE=新引擎;
+		alter table customer ENGINE =MyISAM;
+		alter table customer ENGINE =InnoDB;【支持事务】
+
+*****************************************************************
+事务处理
+	【begin/start transaction】【rollback[失败]	commit[全部成功]】
+
+
+	alter table tb engine = InnoDB;
+	select * from tb;
+	begin;[start/begin transaction]
+	delete from tb;
+	select * from tb;
+	rollback;
+	select * from tb;
+
+
+	自动提交功能:
+		set autocommit =0;[将自动提交功能置为OFF]【可以直接rollback，只有显示使用Commit才会更新】
+		set autocommit =1;[将自动提交功能置为ON]
+		select @@autocommit;【查看现在使用的自动提交模式】
+
+	set autocommit = 0;
+	select * from tb;
+	insert into tb(name) values("New name");
+	select * from tb;
+	rollback;;
+	select * from tb;
+
+
+	部分回滚【利用保存点可以实现只提交事务中部分处理的功能，回滚到定义保存点sp前的状态】
+		定义保存点：savepoint 保存点名称;
+		回滚到指定的保存点：rollback to savepoint 保存点名称;
+
+		start transaction;
+		insert into tb(name) values('a');
+		insert into tb(name) values('b');
+		savepoint sp;
+		insert into tb(name) values('c');
+		select * from tb;
+		rollback to savepoint sp;
+
+
+
+	事务处理的利用范围
+		以下SQL命令，执行后将自动提交，是在事务处理可以利用的范围之外【不能rollback】
+		drop database;
+		drop table;
+		drop;
+		alter table;
+
+
+*****************************************************************
+
+锁定与事务处理分离水平
+	锁定【多用户】
+	【行，表，数据库】锁定，锁定提升-->
+	【非提交读取-脏读】【不可重复读取】【幻象读取】
+	【死锁】【防止:尽量对同一对象数据按照相同的顺序执行】
+
+
+事务处理内部的动作
+	UNDO日志
+	REDO日志
+
+
+
+*************************************************************************************************************************
+索引
+	【检索性能】---【B树(平衡树)】
+
+*****************************************************************
+索引的设置与分析
+	1.创建索引索引:
+		create [unique] index 索引名 on 表名（列名，...）;
+		
+		create index idx_name on employee(name)
+
+	2.显示表中所有的索引信息
+		show index from 表名
+
+	3.删除索引
+		drop index 索引名 on 表名
+
+	4.创建多列构成的复合索引以及唯一索引
+		复合索引：create index idx_pinyin on employee(lname,fname);
+
+		唯一索引：create unique index idx_name on employee(lname,fname);
+			  create unique index idx_name on employee(lname);【对某列创建唯一索引，相当于给该列追加了唯一约束;如果此列存在重复数据，创建唯一索引失败】
+			
+	5.索引的使用状态，优劣
+		确认索引的使用状态：
+			explain 调查对象 select 语句;
+			explain select * from employee where lname='wang'\G
+
+	select * from employee where name like '%w%';//无法在使用索引了
+	select * from employee where name is not null;//无法在使用索引了
+	select * from employee where name <> 'wang';//无法在使用索引了
+
+	select * from employee where YEAR(birth)='1980';//无法在使用索引了
+	select * from employee where birth >= '1980-01-01' and birh <= '1980-12-31';//可以使用索引
+			
+
+	create index idx_name on employee(lname,fname);
+	select * from employee where lname='wang';//可以使用索引
+	select * from employee where lname='wang' and fname='xiao';//可以使用索引
+
+	select * from employee where fname='xiao';//无法在使用索引了
+	select * from employee where lname='wang' or fname='xiao';//无法在使用索引了
+
+
+	
+
+*************************************************************************************************************************
+视图
+
+	本质：纯粹的条件检索
+
+不拥有真正的数据
+根据条件动态生成数据【抽取组装表数据】
+可以当普通的表一样使用【伪表】
+
+*****************************************************************
+创建视图
+	create view 视图名（列名，...）as select 语句[with check point];
+
+	create or replace view  视图名 AS select name as nm,...【修改/替换已存在视图】
+	alter view 视图名 as select ...
+
+删除视图	
+	drop view 视图名;
+
+显示视图中所有列信息	show fields from 视图名/【表名】
+			desc 视图名/[表名]
+
+
+
+【WITH　CHECK OPTION】
+
+	CREATE VIEW v_product3000up
+	AS 
+		SELECT * FROM product WHERE price >=3000
+	WITH CHECK OPTION;
+
+	insert into v_product3000up(id,price) values('A1',40);【×】
+
+
+
+
+*************************************************************************************************************************
+存储过程
+
+
+*****************************************************************
+创建存储过程
+	create procedure 存储过程名(
+		参数的种类1	参数1	数据类型1
+	[,参数种类2	参数2	数据类型2...]
+	)
+	begin
+		处理内容
+	end
+
+*****************************************************************
+
+delimiter //	[将;-->//]改变分隔符
+
+create procedure sp_search_customer(in p_name varchar(20))
+begin
+	if p_name is null or p_name='' then
+		select * from customer;
+	else
+		select * from customer where name like p_name;
+	end if;
+end
+//
+
+delimiter ;
+
+*****************************************************************
+
+show procedure status\G
+
+call sp_search_customer('王%');
+call sp_search_customer('');
+call sp_search_customer(null);
+
+
+*****************************************************************
+delimiter //	[将;-->//]改变分隔符
+
+create procedure sp_search_customer(in p_name varchar(20),out p_cnt int)
+begin
+	if p_name is null or p_name='' then
+		select * from customer;
+	else
+		select * from customer where name like p_name;
+	end if;
+
+	select FOUND_ROWS() INTO p_cnt;
+end
+//
+
+delimiter ;
+
+
+call sp_search_customer('王%',@num);
+select @num;
+
+*****************************************************************
+delimiter //
+create procedure sp_search_employee3(in p_depart int)
+begin
+	declare tmp char(4);
+	case p_depart
+	when 1 then
+		set tmp='研究部';
+	when 2 then
+		set tmp='AC 部';
+	else
+		set tmp='经理部';
+	end case;
+	
+	select * from employee where depart =tmp;
+end
+//
+
+delimiter ;
+
+*****************************************************************
+
+【while】【repeat】
+【case】【if elseif else】
+【declare】【set】
+【found_rows()】【上一条Select语句结果个数】
+【select found_rows() into cnt】
+
+*************************************************************************************************************************
+函数	触发器	游标
+
+*****************************************************************
+
+
+*************************************************************************************************************************
+
